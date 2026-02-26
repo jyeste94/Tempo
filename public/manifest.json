@@ -1,0 +1,16 @@
+{
+    "name": "Tempo - Minimalist Tasks",
+    "short_name": "Tempo",
+    "description": "Organiza tu día de forma minimalista",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#09090b",
+    "theme_color": "#09090b",
+    "icons": [
+        {
+            "src": "/favicon.ico",
+            "sizes": "256x256",
+            "type": "image/x-icon"
+        }
+    ]
+}

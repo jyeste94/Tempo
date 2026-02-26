@@ -8,6 +8,16 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "Tempo",
   description: "Minimalist Daily Task Management",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Tempo",
+  },
+};
+
+export const viewport = {
+  themeColor: "#09090b",
 };
 
 export default function RootLayout({ children }) {

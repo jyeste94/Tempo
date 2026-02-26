@@ -4,22 +4,29 @@ import { useState } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import { Sidebar } from "@/components/Sidebar";
 import { useTasks } from "@/hooks/useTasks";
+import { useNotifications } from "@/hooks/useNotifications";
 import { TaskCard } from "@/components/TaskCard";
 import { QuickTags } from "@/components/QuickTags";
 import { TimePicker } from "@/components/TimePicker";
+import { DailyStats } from "@/components/DailyStats";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2, Menu, CheckCircle2 } from "lucide-react";
+import { PlusCircle, Loader2, Menu, CheckCircle2, Save, Download } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DashboardPage() {
-    const { tasks, loading, addTask, removeTask } = useTasks();
+    const { user } = useAuth();
+    const { tasks, loading, addTask, updateTask, removeTask } = useTasks();
+    useNotifications(tasks);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
     const [description, setDescription] = useState("");
+    const [category, setCategory] = useState("work");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingRoutine, setIsLoadingRoutine] = useState(false);
 
     const handleAddTask = async (e) => {
         e.preventDefault();
@@ -27,10 +34,11 @@ export default function DashboardPage() {
 
         try {
             setIsSubmitting(true);
-            await addTask({ startTime, endTime, description });
+            await addTask({ startTime, endTime, description, category });
             setDescription("");
             setStartTime("");
             setEndTime("");
+            // keep last selected category
         } catch (err) {
             console.error("Failed to add task", err);
         } finally {
@@ -40,6 +48,38 @@ export default function DashboardPage() {
 
     const handleQuickTag = (tagText) => {
         setDescription((prev) => (prev ? `${prev} ${tagText}` : tagText));
+    };
+
+    const handleSaveRoutine = () => {
+        if (!user || tasks.length === 0) return;
+        const routine = tasks.map(t => ({
+            startTime: t.startTime,
+            endTime: t.endTime,
+            description: t.description,
+            category: t.category || "work"
+        }));
+        localStorage.setItem(`tempo_routine_${user.uid}`, JSON.stringify(routine));
+        alert("Día actual guardado como plantilla ✅");
+    };
+
+    const handleLoadRoutine = async () => {
+        if (!user) return;
+        const saved = localStorage.getItem(`tempo_routine_${user.uid}`);
+        if (saved) {
+            try {
+                setIsLoadingRoutine(true);
+                const routineTasks = JSON.parse(saved);
+                for (const t of routineTasks) {
+                    await addTask(t);
+                }
+            } catch (err) {
+                console.error("Failed to load routine", err);
+            } finally {
+                setIsLoadingRoutine(false);
+            }
+        } else {
+            alert("No hay ninguna plantilla guardada. Guarda un día primero.");
+        }
     };
 
     return (
@@ -62,10 +102,24 @@ export default function DashboardPage() {
                         </Button>
                     </div>
 
-                    <header className="mb-6 lg:mb-8">
-                        <h1 className="text-2xl font-extrabold tracking-tight lg:text-4xl mb-1 lg:mb-2">Mi Día</h1>
-                        <p className="text-muted-foreground text-lg">Organiza y visualiza tu flujo de trabajo.</p>
+                    <header className="mb-6 lg:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-extrabold tracking-tight lg:text-4xl mb-1 lg:mb-2">Mi Día</h1>
+                            <p className="text-muted-foreground text-lg">Organiza y visualiza tu flujo de trabajo.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={handleLoadRoutine} disabled={isLoadingRoutine}>
+                                {isLoadingRoutine ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                                Cargar Tareas
+                            </Button>
+                            <Button variant="outline" onClick={handleSaveRoutine}>
+                                <Save className="w-4 h-4 mr-2" />
+                                Guardar como Plantilla
+                            </Button>
+                        </div>
                     </header>
+
+                    <DailyStats tasks={tasks} />
 
                     {/* Add Task Form */}
                     <div className="bg-card border rounded-2xl p-6 shadow-sm mb-10">
@@ -87,6 +141,25 @@ export default function DashboardPage() {
                                         required
                                     />
                                 </div>
+
+                                {/* Category Selection */}
+                                <div className="md:col-span-10 flex gap-2">
+                                    {[
+                                        { id: "work", label: "Trabajo", colorClass: "bg-blue-500/10 text-blue-500 border-blue-200 dark:border-blue-900" },
+                                        { id: "health", label: "Salud", colorClass: "bg-emerald-500/10 text-emerald-500 border-emerald-200 dark:border-emerald-900" },
+                                        { id: "leisure", label: "Ocio", colorClass: "bg-amber-500/10 text-amber-500 border-amber-200 dark:border-amber-900" }
+                                    ].map(cat => (
+                                        <button
+                                            key={cat.id}
+                                            type="button"
+                                            onClick={() => setCategory(cat.id)}
+                                            className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all ${category === cat.id ? cat.colorClass + " ring-1 ring-current" : "bg-transparent text-muted-foreground border-border hover:bg-accent"}`}
+                                        >
+                                            {cat.label}
+                                        </button>
+                                    ))}
+                                </div>
+
                                 <div className="md:col-span-2">
                                     <Button type="submit" className="w-full" disabled={isSubmitting}>
                                         {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><PlusCircle className="w-4 h-4 mr-2" /> Añadir</>}
@@ -126,6 +199,7 @@ export default function DashboardPage() {
                                         <TaskCard
                                             key={task.id}
                                             task={task}
+                                            onUpdate={updateTask}
                                             onRemove={removeTask}
                                         />
                                     ))}

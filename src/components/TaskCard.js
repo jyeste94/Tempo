@@ -2,11 +2,11 @@
 
 import { motion } from "framer-motion";
 import { format, isWithinInterval, parse } from "date-fns";
-import { Trash2, AlertCircle } from "lucide-react";
+import { Trash2, AlertCircle, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export function TaskCard({ task, onRemove }) {
+export function TaskCard({ task, onUpdate, onRemove }) {
     const [isCurrent, setIsCurrent] = useState(false);
 
     useEffect(() => {
@@ -31,6 +31,29 @@ export function TaskCard({ task, onRemove }) {
         return () => clearInterval(interval);
     }, [task.startTime, task.endTime]);
 
+    const categoryColors = {
+        work: "border-blue-200/50 dark:border-blue-900/50 hover:border-blue-500",
+        health: "border-emerald-200/50 dark:border-emerald-900/50 hover:border-emerald-500",
+        leisure: "border-amber-200/50 dark:border-amber-900/50 hover:border-amber-500",
+        default: "border-border hover:border-foreground/30"
+    };
+
+    const categoryBg = {
+        work: "bg-blue-500/5",
+        health: "bg-emerald-500/5",
+        leisure: "bg-amber-500/5",
+        default: "bg-card"
+    };
+
+    const currentCategoryColor = categoryColors[task.category] || categoryColors.default;
+    const currentCategoryBg = categoryBg[task.category] || categoryBg.default;
+
+    const handleToggleCompletion = () => {
+        if (onUpdate) {
+            onUpdate(task.id, { isCompleted: !task.isCompleted });
+        }
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -38,11 +61,24 @@ export function TaskCard({ task, onRemove }) {
             exit={{ opacity: 0, scale: 0.95 }}
             layout
             className={cn(
-                "relative p-4 rounded-xl border bg-card flex items-center gap-4 transition-all shadow-sm group",
-                isCurrent && "border-primary ring-1 ring-primary/50 bg-primary/5",
-                task.isOverlapping && "border-destructive ring-1 ring-destructive/50"
+                "relative p-4 rounded-xl border flex items-center gap-4 transition-all shadow-sm group",
+                currentCategoryBg,
+                currentCategoryColor,
+                isCurrent && !task.isCompleted && "ring-1 ring-primary/50 !bg-primary/5",
+                task.isOverlapping && !task.isCompleted && "border-destructive ring-1 ring-destructive/50",
+                task.isCompleted && "opacity-50 grayscale"
             )}
         >
+            <button
+                onClick={handleToggleCompletion}
+                className={cn(
+                    "flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                    task.isCompleted ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 hover:border-primary/50 text-transparent hover:text-primary/30"
+                )}
+            >
+                <CheckCircle className="w-4 h-4" />
+            </button>
+
             <div className="w-16 flex-shrink-0 text-center">
                 <div className="text-sm font-bold text-foreground">{task.startTime}</div>
                 <div className="text-xs text-muted-foreground">{task.endTime}</div>
@@ -51,10 +87,13 @@ export function TaskCard({ task, onRemove }) {
             <div className="h-full w-1 bg-border rounded-full self-stretch my-1" />
 
             <div className="flex-1 min-w-0">
-                <h4 className={cn("text-base font-semibold truncate", isCurrent ? "text-primary" : "text-foreground")}>
+                <h4 className={cn("text-base font-semibold truncate transition-colors",
+                    task.isCompleted ? "text-muted-foreground line-through" :
+                        isCurrent ? "text-primary" : "text-foreground"
+                )}>
                     {task.description}
                 </h4>
-                {task.isOverlapping && (
+                {task.isOverlapping && !task.isCompleted && (
                     <p className="text-xs text-destructive flex items-center gap-1 mt-1">
                         <AlertCircle className="w-3 h-3" /> Horario solapado
                     </p>
