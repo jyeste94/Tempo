@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, getRedirectResult } from "firebase/auth";
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "@/config/firebaseConfig";
 
 const AuthContext = createContext({});
@@ -14,15 +14,6 @@ export const AuthProvider = ({ children }) => {
     const [authError, setAuthError] = useState(null);
 
     useEffect(() => {
-        // Handle redirect result
-        console.log("Checking redirect result...");
-        getRedirectResult(auth).then((result) => {
-            console.log("Redirect Result:", result);
-        }).catch((error) => {
-            console.error("Firebase Redirect Error:", error);
-            setAuthError(error.message);
-        });
-
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             console.log("Auth State Changed. User:", currentUser ? currentUser.email : "null");
             setUser(currentUser);
@@ -33,7 +24,7 @@ export const AuthProvider = ({ children }) => {
 
     const loginWithGoogle = async () => {
         const provider = new GoogleAuthProvider();
-        return signInWithRedirect(auth, provider);
+        return signInWithPopup(auth, provider);
     };
 
     const loginWithEmail = async (email, password) => {
